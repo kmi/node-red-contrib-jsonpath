@@ -1,0 +1,159 @@
+<!--
+ Copyright (c) 2014. Knowledge Media Institute - The Open University
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<!--
+ Node-RED node that allows to evaluate JSONPath expressions over the messages received
+
+ @author <a href="mailto:carlos.pedrinaci@open.ac.uk">Carlos Pedrinaci</a> (KMi - The Open University)
+-->
+
+<script type="text/x-red" data-template-name="jsonpath">
+   <!-- data-template-name identifies the node type this is for              -->
+
+   <!-- Each of the following divs creates a field in the edit dialog.       -->
+   <!-- Generally, there should be an input for each property of the node.   -->
+   <!-- The for and id attributes identify the corresponding property        -->
+   <!-- (with the 'node-input-' prefix).                                     -->
+   <!-- The available icon classes are defined Twitter Bootstrap glyphicons  -->
+
+    <!-- The JSONPath Expression -->
+    <div class="form-row">
+        <label for="node-input-expression"><i class="fa fa-edit"></i> JSONPath</label>
+        <input type="text" id="node-input-expression" placeholder="JSONPath expression">
+    </div>
+
+    <!-- One message per match? -->
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-input-split" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-input-split" style="width: 70%;">Send each match as a separate message?</label>
+    </div>
+
+    <!-- By convention, most nodes have a 'name' property. The following div -->
+    <!-- provides the necessary field. Should always be the last option      -->
+
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+
+</script>
+
+
+<!-- Next, some simple help text is provided for the node.                   -->
+<script type="text/x-red" data-help-name="jsonpath">
+    <p>This node allows to evaluate JSONPath expressions over the messages received. If the message is a string it will attempt to parse it as a JSON object</p>
+    <p>You may choose to send all match results in one message or generate one message per match result obtained.</p>
+    <p>JSONPath allows navigating through the JSON structure of the message received. Since a JSON structure is usually anonymous and doesn't necessarily have a "root member object" JSONPath assumes the abstract name $ assigned to the outer level object.</p>
+    <p> To navigate through the JSON object, JSONPath expressions can use the dot–notation as well as the bracket notation: $.store.book[0].title and $['store']['book'][0]['title'] are thus equivalent expressions. </p>
+    <p><b>Quick reference</b></p>
+    <ul>
+        <li><b>$</b> refers to the root object/element</li>
+        <li><b>@</b> refers to the current object/element</li>
+        <li><b>.</b> or <b>[]</b> refer to a child of the object/element</li>
+        <li><b>..</b> is a recursive descendant</li>
+        <li><b>*</b> is a wildcard. It will match all objects/elements regardless of their names</li>
+        <li><b>[,]</b> is the union operator. JSONPath allows alternate names or array indices as a set</li>
+        <li><b>[start:end:step]</b> allows to do array slices</li>
+        <li><b>?()</b> applies a filter (script) expression.</li>
+        <li><b>()</b> script expression, using the underlying script engine.</li>
+    </ul>
+
+    <p>Given the following JSON object you can find below some JSONPath examples taken from <a href="http://goessner.net/articles/JsonPath/">http://goessner.net/articles/JsonPath/</a> and the result they obtain. </p>
+    <pre>
+    {
+      "store": {
+        "book": [
+          {
+            "category": "reference",
+            "author": "Nigel Rees",
+            "title": "Sayings of the Century",
+            "price": 8.95
+          },
+          {
+            "category": "fiction",
+            "author": "Evelyn Waugh",
+            "title": "Sword of Honour",
+            "price": 12.99
+          },
+          {
+            "category": "fiction",
+            "author": "Herman Melville",
+            "title": "Moby Dick",
+            "isbn": "0-553-21311-3",
+            "price": 8.99
+          },
+          {
+            "category": "fiction",
+            "author": "J. R. R. Tolkien",
+            "title": "The Lord of the Rings",
+            "isbn": "0-395-19395-8",
+            "price": 22.99
+          }
+        ],
+        "bicycle": {
+          "color": "red",
+          "price": 19.95
+        }
+      }
+    }
+    </pre>
+
+    <ul>
+        <li><b>$.store.book[*].author</b> obtains the authors of all books in the store</li>
+        <li><b>$..author</b> obtains all authors</li>
+        <li><b>$.store.*</b> obtains all things in store, which are some books and a red bicycle.</li>
+        <li><b>$.store..price</b> obtains the price of everything in the store.</li>
+        <li><b>$..book[2]</b> obtains the third book</li>
+        <li><b>$..book[(@.length-1)]</b> obtains the last book in order.</li>
+        <li><b>$..book[0,1]</b> obtains the first two books</li>
+        <li><b>$..book[?(@.isbn)]</b> filters all books with isbn number </li>
+        <li><b>$..book[?(@.price<10)]</b> filters all books cheaper than 10 </li>
+        <li><b>$..[?(@.price>19)]^</b> obtains categories with things more expensive than 19</li>
+        <li><b>$..*</b> obtains all members of JSON structure.</li>
+    </ul>
+
+</script>
+
+<!-- Finally, the node type is registered along with all of its properties   -->
+<!-- The example below shows a small subset of the properties that can be set-->
+
+<script type="text/javascript">
+
+    RED.nodes.registerType('jsonpath',{
+        category: 'function',      // the palette category
+        color:"#e97b00",
+        defaults: {             // defines the editable properties of the node
+            expression: {value:""},
+            split: {value:false},
+            name: {value:""}
+        },
+        inputs:1,               // set the number of inputs - only 0 or 1
+        outputs:1,              // set the number of outputs - 0 to n
+        // set the icon (held in icons dir below where you save the node)
+        icon: "template.png",     // saved in  icons/myicon.png
+        label: function() {     // sets the default label contents
+            if (this.name) {
+                return this.name;
+            } else {
+                return "JSONPath";
+            }
+        },
+        labelStyle: function() { // sets the class to apply to the label
+            return this.name ? "node_label_italic" : "";
+        }
+    });
+</script>
