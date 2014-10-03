@@ -21,7 +21,7 @@
  */
 
 module.exports = function(RED) {
-
+    "use strict";
     var jsonPath = require('JSONPath');
     
     // The main node definition - most things happen in here
@@ -36,18 +36,26 @@ module.exports = function(RED) {
         var node = this;
 
         this.on("input", function(msg) {
-            if (msg != undefined && msg.payload != undefined ) {
+            if ( msg.hasOwnProperty("payload") ) {
                 var input = msg.payload;
                 if (typeof msg.payload === "string") {
                     // It's a string: parse it as JSON
-                    input = JSON.parse(msg.payload);
+                    try {
+                        input = JSON.parse(msg.payload);
+                    } catch (e) {
+                        node.warn("The message received is not JSON. Ignoring it.");
+                        return;
+                    }
                 }
                 // Evalute the JSONPath expresssion
                 var evalResult = jsonPath.eval(input, node.expression);
 
                 if (!node.split) {
-                    node.send({"payload" : evalResult});
+                    // Batch it in one message. Carry pre-existing properties
+                    msg.payload = evalResult;
+                    node.send(msg);
                 } else {
+                    // Send one message per match result
                     var response = evalResult.map(function (value) {
                         return {"payload": value};
                     });

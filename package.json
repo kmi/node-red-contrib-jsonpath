@@ -1,6 +1,6 @@
 {
     "name"          : "node-red-contrib-jsonpath",
-    "version"       : "0.1.0",
+    "version"       : "0.1.1",
     "description"   : "A Node-RED node that allows to evaluate JSONPath expressions over the messages received",
     "dependencies"  : {
         "JSONPath": ">=0.10.0"
